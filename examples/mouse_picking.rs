@@ -12,10 +12,10 @@ use bevy_mod_raycast::{
 fn main() {
     App::new()
         .add_plugins(DefaultPlugins.set(WindowPlugin {
-            window: WindowDescriptor {
-                present_mode: PresentMode::AutoNoVsync, // Reduces input lag.
+            primary_window: Some(Window {
+                present_mode: PresentMode::AutoNoVsync, // Reduces input latency
                 ..default()
-            },
+            }),
             ..default()
         }))
         // The DefaultRaycastingPlugin bundles all the functionality you might need into a single
@@ -75,7 +75,7 @@ fn setup(
         .insert(RaycastSource::<MyRaycastSet>::new()); // Designate the camera as our source
     commands
         .spawn(PbrBundle {
-            mesh: meshes.add(Mesh::from(shape::Icosphere::default())),
+            mesh: meshes.add(Mesh::try_from(shape::Icosphere::default()).unwrap()),
             material: materials.add(Color::rgb(1.0, 1.0, 1.0).into()),
             ..Default::default()
         })

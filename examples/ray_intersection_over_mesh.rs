@@ -16,10 +16,10 @@ use bevy_mod_raycast::{
 fn main() {
     App::new()
         .add_plugins(DefaultPlugins.set(WindowPlugin {
-            window: WindowDescriptor {
+            primary_window: Some(Window {
                 present_mode: PresentMode::AutoNoVsync, // Reduces input latency
                 ..default()
-            },
+            }),
             ..default()
         }))
         .add_plugin(DefaultRaycastingPlugin::<Ground>::default())
@@ -171,14 +171,14 @@ fn setup(
     // Spawn the intersection point, invisible by default until there is an intersection
     commands
         .spawn(PbrBundle {
-            mesh: meshes.add(Mesh::from(shape::Icosphere::default())),
+            mesh: meshes.add(Mesh::try_from(shape::Icosphere::default()).unwrap()),
             material: materials.add(StandardMaterial {
                 unlit: true,
                 base_color: Color::RED,
                 ..Default::default()
             }),
             transform: Transform::from_scale(Vec3::splat(0.1)),
-            visibility: Visibility { is_visible: false },
+            visibility: Visibility::Hidden,
             ..Default::default()
         })
         .insert(PathObstaclePoint);
@@ -272,7 +272,7 @@ fn check_path(
                     // Set everything as OK in case there are no obstacle in path
                     text.sections[1].value = "Direct!".to_string();
                     text.sections[1].style.color = Color::GREEN;
-                    visible.is_visible = false;
+                    *visible = Visibility::Hidden;
 
                     let mut closest_hit = f32::MAX;
 
@@ -296,7 +296,7 @@ fn check_path(
                                     text.sections[1].value = "Obstructed!".to_string();
                                     text.sections[1].style.color = Color::RED;
                                     intersection_transform.translation = intersection.position();
-                                    visible.is_visible = true;
+                                    *visible = Visibility::Visible;
                                     closest_hit = hit_distance;
                                 }
                             }

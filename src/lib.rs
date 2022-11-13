@@ -386,7 +386,7 @@ pub fn update_raycast<T: 'static>(
         ),
         With<RaycastMesh<T>>,
     >,
-    #[cfg(feature = "debug")] mesh_query: Query<
+    #[cfg(feature = "debug")] mut mesh_query: Query<
         (
             &Handle<Mesh>,
             Option<&SimplifiedMesh>,
@@ -396,7 +396,7 @@ pub fn update_raycast<T: 'static>(
         ),
         (With<RaycastMesh<T>>, Without<DebugCursorMesh<T>>),
     >,
-    #[cfg(not(feature = "debug"))] mesh_query: Query<
+    #[cfg(not(feature = "debug"))] mut mesh_query: Query<
         (
             &Handle<Mesh>,
             Option<&SimplifiedMesh>,
@@ -406,7 +406,7 @@ pub fn update_raycast<T: 'static>(
         ),
         With<RaycastMesh<T>>,
     >,
-    #[cfg(feature = "2d")] mesh2d_query: Query<
+    #[cfg(feature = "2d")] mut mesh2d_query: Query<
         (
             &Mesh2dHandle,
             Option<&SimplifiedMesh>,
@@ -431,9 +431,11 @@ pub fn update_raycast<T: 'static>(
                     |(visibility, comp_visibility, bound_vol, transform, entity)| {
                         let should_raycast =
                             if let RaycastMethod::Screenspace(_) = pick_source.cast_method {
-                                visibility.is_visible && comp_visibility.is_visible()
+                                visibility == Visibility::Visible
+                                    || visibility == Visibility::Inherited
+                                        && comp_visibility.is_visible()
                             } else {
-                                visibility.is_visible
+                                visibility == Visibility::Visible
                             };
                         if should_raycast {
                             if let Some(aabb) = bound_vol {
@@ -494,17 +496,19 @@ pub fn update_raycast<T: 'static>(
                     }
                 };
 
-            mesh_query.par_for_each(32, pick_mesh);
+            mesh_query.par_iter().for_each(pick_mesh);
             #[cfg(feature = "2d")]
-            mesh2d_query.par_for_each(32, |(mesh_handle, simplified_mesh, transform, entity)| {
-                pick_mesh((
-                    &mesh_handle.0,
-                    simplified_mesh,
-                    Some(&NoBackfaceCulling),
-                    transform,
-                    entity,
-                ))
-            });
+            mesh2d_query.par_iter().for_each(
+                |(mesh_handle, simplified_mesh, transform, entity)| {
+                    pick_mesh((
+                        &mesh_handle.0,
+                        simplified_mesh,
+                        Some(&NoBackfaceCulling),
+                        transform,
+                        entity,
+                    ))
+                },
+            );
 
             let picks = Arc::try_unwrap(picks).unwrap().into_inner().unwrap();
             pick_source.intersections = picks.into_values().map(|(e, i)| (e, i)).collect();
